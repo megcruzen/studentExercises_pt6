@@ -33,6 +33,7 @@ namespace StudentExercises.Controllers
         /**********************
         * Get all instructors
         **********************/
+        // GET: api/instructor
         [HttpGet]
         public List<Instructor> Get(string q)
         {
@@ -44,9 +45,9 @@ namespace StudentExercises.Controllers
                     if (q != null)
                     {
                         cmd.CommandText = $@"SELECT i.Id, i.FirstName, i.LastName, i.Slack, i.CohortId, c.CohortName
-                                        FROM Instructor i INNER JOIN Cohort c
-                                        ON i.CohortId = c.id
-                                        WHERE FirstName LIKE @q OR LastName LIKE @q OR Slack LIKE @q";
+                                            FROM Instructor i INNER JOIN Cohort c
+                                            ON i.CohortId = c.id
+                                            WHERE FirstName LIKE @q OR LastName LIKE @q OR Slack LIKE @q";
                         cmd.Parameters.Add(new SqlParameter("@q", $"%{q}%"));
                         SqlDataReader reader = cmd.ExecuteReader();
 
@@ -110,6 +111,7 @@ namespace StudentExercises.Controllers
         /*******************
         * Get instructor
         *******************/
+        // GET: api/instructor/5
         [HttpGet("{id}", Name = "GetInstructor")]
         public Instructor Get([FromRoute] int id)
         {
@@ -153,6 +155,7 @@ namespace StudentExercises.Controllers
         /*******************
        * Create instructor
        *******************/
+        // POST: api/instructor
         [HttpPost]
         public async Task<IActionResult> Post([FromBody] Instructor newInstructor)
         {
@@ -181,6 +184,7 @@ namespace StudentExercises.Controllers
         /*******************
         * Edit instructor
         *******************/
+        // PUT: api/APIWithActions/5
         [HttpPut("{id}")]
         public async Task<IActionResult> Put([FromRoute] int id, [FromBody] Instructor instructor)
         {
@@ -228,6 +232,7 @@ namespace StudentExercises.Controllers
         /*******************
         * Delete instructor
         *******************/
+        // DELETE: api/instructor/5
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete([FromRoute] int id)
         {

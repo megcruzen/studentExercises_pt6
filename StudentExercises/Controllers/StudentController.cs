@@ -44,45 +44,57 @@ namespace StudentExercises.Controllers
                 {
                     if (include == "exercise" || include == "exercises")
                     {
-                        cmd.CommandText = @"select s.id as StudentId,
-                                       s.FirstName,
-                                       s.LastName,
-                                       s.Slack,
-                                       s.CohortId,
-                                       c.CohortName,
-                                       c.Id,
-                                       e.id as ExerciseId,
-                                       e.ExerciseName,
-                                       e.ExerciseLanguage
-                                  from student s
-                                       left join Cohort c on s.CohortId = c.id
-                                       left join StudentExercise se on s.id = se.studentid
-                                       left join Exercise e on se.exerciseid = e.id;";
-                        SqlDataReader reader = cmd.ExecuteReader();
+                        cmd.CommandText = @"SELECT s.Id as StudentId, s.FirstName, s.LastName, s.Slack, s.CohortId,
+                                                   c.CohortName, c.Id,  e.id as ExerciseId, e.ExerciseName, e.ExerciseLanguage
+                                            FROM Student s
+                                            LEFT JOIN Cohort c on s.CohortId = c.id
+                                            LEFT JOIN StudentExercise se on s.id = se.studentid
+                                            LEFT JOIN Exercise e on se.exerciseid = e.id
+                                            WHERE 1=1";
+                    }
+                    else
+                    {
+                        cmd.CommandText = @"SELECT s.Id as StudentId, s.FirstName, s.LastName, s.Slack, s.CohortId,
+                                                   c.CohortName, c.Id
+                                            FROM Student s
+                                            LEFT JOIN Cohort c on s.CohortId = c.id
+                                            WHERE 1=1";
+                    }
 
-                        Dictionary<int, Student> students = new Dictionary<int, Student>();
-                        while (reader.Read())
+                    if (!string.IsNullOrWhiteSpace(q))
+                    {
+                        cmd.CommandText += @" AND
+                                             (s.FirstName LIKE @q OR s.LastName LIKE @q OR s.Slack LIKE @q)";
+                        cmd.Parameters.Add(new SqlParameter("@q", $"%{q}%"));
+                    }
+
+                    SqlDataReader reader = cmd.ExecuteReader();
+
+                    Dictionary<int, Student> students = new Dictionary<int, Student>();
+                    while (reader.Read())
+                    {
+                        int studentId = reader.GetInt32(reader.GetOrdinal("StudentId"));
+                        if (!students.ContainsKey(studentId))
                         {
-                            int studentId = reader.GetInt32(reader.GetOrdinal("StudentId"));
-                            if (!students.ContainsKey(studentId))
+                            Student newStudent = new Student
                             {
-                                Student newStudent = new Student
+                                Id = studentId,
+                                FirstName = reader.GetString(reader.GetOrdinal("FirstName")),
+                                LastName = reader.GetString(reader.GetOrdinal("LastName")),
+                                Slack = reader.GetString(reader.GetOrdinal("Slack")),
+                                CohortId = reader.GetInt32(reader.GetOrdinal("CohortId")),
+                                Cohort = new Cohort
                                 {
-                                    Id = studentId,
-                                    FirstName = reader.GetString(reader.GetOrdinal("FirstName")),
-                                    LastName = reader.GetString(reader.GetOrdinal("LastName")),
-                                    Slack = reader.GetString(reader.GetOrdinal("Slack")),
-                                    CohortId = reader.GetInt32(reader.GetOrdinal("CohortId")),
-                                    Cohort = new Cohort
-                                    {
-                                        Id = reader.GetInt32(reader.GetOrdinal("Id")),
-                                        CohortName = reader.GetString(reader.GetOrdinal("CohortName"))
-                                    }
-                                };
+                                    Id = reader.GetInt32(reader.GetOrdinal("Id")),
+                                    CohortName = reader.GetString(reader.GetOrdinal("CohortName"))
+                                }
+                            };
 
-                                students.Add(studentId, newStudent);
-                            }
+                            students.Add(studentId, newStudent);
+                        }
 
+                        if (include == "exercise" || include == "exercises")
+                        {
                             if (!reader.IsDBNull(reader.GetOrdinal("ExerciseId")))
                             {
                                 Student currentStudent = students[studentId];
@@ -96,89 +108,10 @@ namespace StudentExercises.Controllers
                                 );
                             }
                         }
-
-                        reader.Close();
-
-                        return students.Values.ToList();
                     }
-                    else if (q != null)
-                    {
-                        cmd.CommandText = $@"SELECT s.id, s.FirstName, s.LastName, s.Slack, s.CohortId, c.CohortName, c.Id
-                                        FROM Student s
-                                        LEFT JOIN Cohort c on s.CohortId = c.id
-                                        WHERE FirstName LIKE @q OR LastName LIKE @q OR Slack LIKE @q";
-                        cmd.Parameters.Add(new SqlParameter("@q", $"%{q}%"));
-                        SqlDataReader reader = cmd.ExecuteReader();
 
-                        List<Student> students = new List<Student>();
-
-                        while (reader.Read())
-                        {
-
-                            {
-                                Student newStudent = new Student
-                                {
-                                    Id = reader.GetInt32(reader.GetOrdinal("Id")),
-                                    FirstName = reader.GetString(reader.GetOrdinal("FirstName")),
-                                    LastName = reader.GetString(reader.GetOrdinal("LastName")),
-                                    Slack = reader.GetString(reader.GetOrdinal("Slack")),
-                                    CohortId = reader.GetInt32(reader.GetOrdinal("CohortId")),
-                                    Cohort = new Cohort
-                                    {
-                                        Id = reader.GetInt32(reader.GetOrdinal("Id")),
-                                        CohortName = reader.GetString(reader.GetOrdinal("CohortName"))
-                                    }
-                                };
-                                students.Add(newStudent);
-                            }
-                        }
-
-                        reader.Close();
-
-                        return students.ToList();
-
-                    }
-                    else
-                    {
-                        cmd.CommandText = @"select s.id as StudentId,
-                                       s.FirstName,
-                                       s.LastName,
-                                       s.Slack,
-                                       s.CohortId,
-                                       c.CohortName,
-                                       c.Id
-                                  from student s
-                                       left join Cohort c on s.CohortId = c.id";
-                        SqlDataReader reader = cmd.ExecuteReader();
-
-                        Dictionary<int, Student> students = new Dictionary<int, Student>();
-                        while (reader.Read())
-                        {
-                            int studentId = reader.GetInt32(reader.GetOrdinal("StudentId"));
-                            if (!students.ContainsKey(studentId))
-                            {
-                                Student newStudent = new Student
-                                {
-                                    Id = studentId,
-                                    FirstName = reader.GetString(reader.GetOrdinal("FirstName")),
-                                    LastName = reader.GetString(reader.GetOrdinal("LastName")),
-                                    Slack = reader.GetString(reader.GetOrdinal("Slack")),
-                                    CohortId = reader.GetInt32(reader.GetOrdinal("CohortId")),
-                                    Cohort = new Cohort
-                                    {
-                                        Id = reader.GetInt32(reader.GetOrdinal("Id")),
-                                        CohortName = reader.GetString(reader.GetOrdinal("CohortName"))
-                                    }
-                                };
-
-                                students.Add(studentId, newStudent);
-                            }
-                        }
-
-                        reader.Close();
-
-                        return students.Values.ToList();
-                    }
+                    reader.Close();
+                    return students.Values.ToList();
 
                 }
             }
@@ -188,39 +121,72 @@ namespace StudentExercises.Controllers
         * Get student
         *******************/
         [HttpGet("{id}", Name = "GetStudent")]
-        public Student Get([FromRoute] int id, string include)
+        public Student Get(int id, string include)
         {
             using (SqlConnection conn = Connection)
             {
                 conn.Open();
                 using (SqlCommand cmd = conn.CreateCommand())
                 {
-                    //if (include == "exercise") { }
-                    cmd.CommandText = $@"SELECT s.Id, s.FirstName, s.LastName, s.Slack, s.CohortId, c.CohortName
+                    if (include == "exercise" || include == "exercises")
+                    {
+                        cmd.CommandText = @"SELECT s.Id as StudentId, s.FirstName, s.LastName, s.Slack, s.CohortId,
+                                                   c.CohortName, c.Id,  e.id as ExerciseId, e.ExerciseName, e.ExerciseLanguage
+                                            FROM Student s
+                                            LEFT JOIN Cohort c on s.CohortId = c.id
+                                            LEFT JOIN StudentExercise se on s.id = se.studentid
+                                            LEFT JOIN Exercise e on se.exerciseid = e.id";
+                    }
+                    else
+                    {
+                        cmd.CommandText = $@"SELECT s.Id, s.FirstName, s.LastName, s.Slack, s.CohortId, c.CohortName
                                         FROM Student s 
-                                        INNER JOIN Cohort c ON s.CohortID = c.id
-                                        WHERE s.Id = @id";
+                                        INNER JOIN Cohort c ON s.CohortID = c.id";
+                    }
+
+                    cmd.CommandText += " WHERE s.id = @id";
                     cmd.Parameters.Add(new SqlParameter("@id", id));
+
                     SqlDataReader reader = cmd.ExecuteReader();
 
                     Student student = null;
 
-                    if (reader.Read())
+                    while (reader.Read())
                     {
-                        student = new Student
+                        if (student == null)
                         {
-                            Id = reader.GetInt32(reader.GetOrdinal("Id")),
-                            FirstName = reader.GetString(reader.GetOrdinal("FirstName")),
-                            LastName = reader.GetString(reader.GetOrdinal("LastName")),
-                            Slack = reader.GetString(reader.GetOrdinal("Slack")),
-                            CohortId = reader.GetInt32(reader.GetOrdinal("CohortId")),
-                            Cohort = new Cohort
+                            student = new Student
                             {
-                                Id = reader.GetInt32(reader.GetOrdinal("CohortId")),
-                                CohortName = reader.GetString(reader.GetOrdinal("CohortName"))
+                                Id = reader.GetInt32(reader.GetOrdinal("Id")),
+                                FirstName = reader.GetString(reader.GetOrdinal("FirstName")),
+                                LastName = reader.GetString(reader.GetOrdinal("LastName")),
+                                Slack = reader.GetString(reader.GetOrdinal("Slack")),
+                                CohortId = reader.GetInt32(reader.GetOrdinal("CohortId")),
+                                Cohort = new Cohort
+                                {
+                                    Id = reader.GetInt32(reader.GetOrdinal("CohortId")),
+                                    CohortName = reader.GetString(reader.GetOrdinal("CohortName"))
+                                }
+
+                            };
+                        }
+
+                        if (include == "exercise" || include == "exercises")
+                        {
+                            if (!reader.IsDBNull(reader.GetOrdinal("ExerciseId")))
+                            {
+                                student.ExerciseList.Add(
+                                    new Exercise
+                                    {
+                                        Id = reader.GetInt32(reader.GetOrdinal("ExerciseId")),
+                                        ExerciseLanguage = reader.GetString(reader.GetOrdinal("ExerciseLanguage")),
+                                        ExerciseName = reader.GetString(reader.GetOrdinal("ExerciseName")),
+                                    }
+                                );
                             }
-                        };
+                        }
                     }
+                    
                     reader.Close();
                     return student;
                 }
@@ -267,10 +233,8 @@ namespace StudentExercises.Controllers
                     using (SqlCommand cmd = conn.CreateCommand())
                     {
                         cmd.CommandText = @"UPDATE Student
-                                            SET FirstName = @firstName,
-                                                LastName = @lastName,
-                                                Slack = @slack,
-                                                CohortId = @cohortId
+                                            SET FirstName = @firstName, LastName = @lastName,
+                                                Slack = @slack, CohortId = @cohortId
                                             WHERE Id = @id";
                         cmd.Parameters.Add(new SqlParameter("@firstName", student.FirstName));
                         cmd.Parameters.Add(new SqlParameter("@lastName", student.LastName));
